@@ -28,3 +28,54 @@
 
 #include "easyubx.h"
 
+TEasyUBXError eubx_init(TEasyUBXHandle * pHandle)
+{
+	TEasyUBXError rc = EUBX_ERROR_NULLPTR;
+	
+	if (NULL != pHandle) {
+		pHandle->is_initialized = true;
+		pHandle->last_error = EUBX_ERROR_OK;
+		pHandle->receive_status = EUBXReceiveIdle;
+		pHandle->send_status = EUBXSendIdle;
+		
+		rc = pHandle->last_error;
+	}
+	
+	return rc;
+}
+
+TEasyUBXError eubx_receive_byte(TEasyUBXHandle * pHandle, uint8_t byte)
+{
+	TEasyUBXError rc = EUBX_ERROR_NULLPTR;
+	
+	if (NULL != pHandle) {
+		switch (pHandle->receive_status) {
+			case EUBXReceiveIdle:
+				if (EUBX_SYNC1 == byte) {
+					pHandle->receive_status = EUBXReceiveSync1;
+				}
+				break;
+				
+			case EUBXReceiveSync1:
+				break;
+				
+			case EUBXReceiveSync2:
+				break;
+
+			case EUBXReceiveClass:
+				break;
+
+			case EUBXReceiveId:
+				break;
+				
+			default:
+				pHandle->receive_status = EUBXReceiveIdle;
+				break;
+		}
+		
+		pHandle->last_error = EUBX_ERROR_OK;
+		rc = pHandle->last_error;
+	}
+	
+	return rc;
+}

@@ -89,11 +89,27 @@ const uint8_t EUBX_ID_LOG_STRING			= 0x04;
 typedef enum {
 	EUBX_ERROR_OK = 0,
 	EUBX_ERROR_NULLPTR = -1
+	EUBX_ERROR_CHECKSUM = -2
 } TEasyUBXError;
 
+typedef enum {
+	EUBXReceiveIdle,
+	EUBXReceiveSync1,
+	EUBXReceiveSync2,
+	EUBXReceiveClass,
+	EUBXReceiveId
+} TEasyUBXReceiveStatus;
+
+typedef enum {
+	EUBXSendIdle,
+	EUBXSending
+} TEasyUBXSendStatus;
+
 typedef struct {
-	bool 			is_initialized;			// is set to true if handle is initialized
-	TEasyUBXError	last_error;				// last error code, will be OK if an operation was successful
+	bool 					is_initialized;			// is set to true if handle is initialized
+	TEasyUBXError			last_error;				// last error code, will be OK if an operation was successful
+	TEasyUBXReceiveStatus	receive_status;
+	TEasyUBXSendStatus		send_status;
 } TEasyUBXHandle;
 
 TEasyUBXError eubx_init(TEasyUBXHandle * pHandle);
