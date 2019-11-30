@@ -1,5 +1,5 @@
 /*
- * Main include file for the Easy UBX library
+ * Main Source file for the Easy UBX C library
  */
  
 /*
@@ -26,9 +26,11 @@
 	SOFTWARE.
 */
 
-#include "easyubx.h"
+#include <stddef.h>
 
-TEasyUBXError eubx_init(TEasyUBXHandle * pHandle)
+#include "easyubx_drv.h"
+
+TEasyUBXError eubx_init(struct eubx_handle * pHandle)
 {
 	TEasyUBXError rc = EUBX_ERROR_NULLPTR;
 	
@@ -44,11 +46,20 @@ TEasyUBXError eubx_init(TEasyUBXHandle * pHandle)
 	return rc;
 }
 
-TEasyUBXError eubx_receive_byte(TEasyUBXHandle * pHandle, uint8_t byte)
+TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
 {
 	TEasyUBXError rc = EUBX_ERROR_NULLPTR;
 	
 	if (NULL != pHandle) {
+    if (pHandle->is_initialized) {
+      rc = EUBX_ERROR_OK;
+    }
+    else {
+      rc = EUBX_ERROR_NOT_INITIALIZED;
+    }
+	}
+
+ if (EUBX_ERROR_OK == rc) {
 		switch (pHandle->receive_status) {
 			case EUBXReceiveIdle:
 				if (EUBX_SYNC1 == byte) {

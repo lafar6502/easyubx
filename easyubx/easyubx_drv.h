@@ -1,5 +1,5 @@
 /*
- * Main include file for the Easy UBX library
+ * Main include file for the Easy UBX C library
  */
  
 /*
@@ -26,9 +26,15 @@
 	SOFTWARE.
 */
 
-#ifndef EASYUBX_H
-#define EASYUBX_H
+#ifndef EASYUBX_DRV_H
+#define EASYUBX_DRV_H
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include <stdbool.h>
 #include <stdint.h>
 
 const uint8_t EUBX_SYNC1					= 0xb5;
@@ -88,8 +94,9 @@ const uint8_t EUBX_ID_LOG_STRING			= 0x04;
 
 typedef enum {
 	EUBX_ERROR_OK = 0,
-	EUBX_ERROR_NULLPTR = -1
-	EUBX_ERROR_CHECKSUM = -2
+	EUBX_ERROR_NULLPTR = -1,
+	EUBX_ERROR_CHECKSUM = -2,
+  EUBX_ERROR_NOT_INITIALIZED = -3
 } TEasyUBXError;
 
 typedef enum {
@@ -105,15 +112,19 @@ typedef enum {
 	EUBXSending
 } TEasyUBXSendStatus;
 
-typedef struct {
+struct eubx_handle {
 	bool 					is_initialized;			// is set to true if handle is initialized
 	TEasyUBXError			last_error;				// last error code, will be OK if an operation was successful
 	TEasyUBXReceiveStatus	receive_status;
 	TEasyUBXSendStatus		send_status;
-} TEasyUBXHandle;
+};
 
-TEasyUBXError eubx_init(TEasyUBXHandle * pHandle);
+TEasyUBXError eubx_init(struct eubx_handle * pHandle);
 
-TEasyUBXError eubx_receive_byte(TEasyUBXHandle * pHandle, uint8_t byte);
+TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte);
 
-#endif  /* EASYUBX_H */
+#ifdef __cplusplus
+} // extern "C"
+#endif
+
+#endif  /* EASYUBX_DRV_H */
