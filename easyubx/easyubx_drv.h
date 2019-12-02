@@ -37,8 +37,10 @@ extern "C"
 #include <stdbool.h>
 #include <stdint.h>
 
-const uint8_t EUBX_SYNC1					= 0xb5;
-const uint8_t EUBX_SYNC2					= 0x62;
+#define UBX_RECEIVE_BUFFER_SIZE     128
+
+const uint8_t EUBX_SYNC1					  = 0xb5;
+const uint8_t EUBX_SYNC2					  = 0x62;
 
 const uint8_t EUBX_CLASS_NAV				= 0x01;
 const uint8_t EUBX_CLASS_RXM				= 0x02;
@@ -59,7 +61,7 @@ const uint8_t EUBX_ID_AID_ALM				= 0x00;
 const uint8_t EUBX_ID_CFG_ANT				= 0x13;
 const uint8_t EUBX_ID_CFG_CFG				= 0x09;
 const uint8_t EUBX_ID_CFG_DAT				= 0x06;
-const uint8_t EUBX_ID_CFG_GNSS				= 0x3d;
+const uint8_t EUBX_ID_CFG_GNSS			= 0x3d;
 const uint8_t EUBX_ID_CFG_INF				= 0x02;
 const uint8_t EUBX_ID_CFG_ITFM				= 0x39;
 const uint8_t EUBX_ID_CFG_LOGFILTER			= 0x47;
@@ -77,34 +79,39 @@ const uint8_t EUBX_ID_CFG_SBAS				= 0x16;
 const uint8_t EUBX_ID_CFG_TP5				= 0x31;
 const uint8_t EUBX_ID_CFG_USB				= 0x1b;
 
-const uint8_t EUBX_ID_INF_DEBUG				= 0x04;
-const uint8_t EUBX_ID_INF_ERROR				= 0x00;
-const uint8_t EUBX_ID_INF_NOTICE			= 0x02;
-const uint8_t EUBX_ID_INF_TEST				= 0x03;
-const uint8_t EUBX_ID_INF_WARNING			= 0x01;
+const uint8_t EUBX_ID_INF_DEBUG				    = 0x04;
+const uint8_t EUBX_ID_INF_ERROR				    = 0x00;
+const uint8_t EUBX_ID_INF_NOTICE			    = 0x02;
+const uint8_t EUBX_ID_INF_TEST				    = 0x03;
+const uint8_t EUBX_ID_INF_WARNING			    = 0x01;
 
-const uint8_t EUBX_ID_LOG_CREATE			= 0x07;
-const uint8_t EUBX_ID_LOG_ERASE				= 0x03;
-const uint8_t EUBX_ID_LOG_FINDTIME			= 0x0e;
-const uint8_t EUBX_ID_LOG_INFO				= 0x08;
-const uint8_t EUBX_ID_LOG_RETRIEVEPOS		= 0x0b;
+const uint8_t EUBX_ID_LOG_CREATE			    = 0x07;
+const uint8_t EUBX_ID_LOG_ERASE				    = 0x03;
+const uint8_t EUBX_ID_LOG_FINDTIME			  = 0x0e;
+const uint8_t EUBX_ID_LOG_INFO				    = 0x08;
+const uint8_t EUBX_ID_LOG_RETRIEVEPOS		  = 0x0b;
 const uint8_t EUBX_ID_LOG_RETRIEVESTRING	= 0x0d;
-const uint8_t EUBX_ID_LOG_RETRIEVE			= 0x09;
-const uint8_t EUBX_ID_LOG_STRING			= 0x04;
+const uint8_t EUBX_ID_LOG_RETRIEVE			  = 0x09;
+const uint8_t EUBX_ID_LOG_STRING			    = 0x04;
 
 typedef enum {
 	EUBX_ERROR_OK = 0,
 	EUBX_ERROR_NULLPTR = -1,
 	EUBX_ERROR_CHECKSUM = -2,
-  EUBX_ERROR_NOT_INITIALIZED = -3
+  EUBX_ERROR_NOT_INITIALIZED = -3,
+  EUBX_ERROR_RECEIVE_OVERFLOW = -4
 } TEasyUBXError;
 
 typedef enum {
-	EUBXReceiveIdle,
-	EUBXReceiveSync1,
-	EUBXReceiveSync2,
-	EUBXReceiveClass,
-	EUBXReceiveId
+	EUBXReceiveExpectSync1,
+	EUBXReceiveExpectSync2,
+	EUBXReceiveExpectClass,
+	EUBXReceiveExpectId,
+  EUBXReceiveExpectLength1,
+  EUBXReceiveExpectLength2,
+  EUBXReceiveExpectContent,
+  EUBXReceiveExpectCKA,
+  EUBXReceiveExpectCKB
 } TEasyUBXReceiveStatus;
 
 typedef enum {
@@ -113,9 +120,16 @@ typedef enum {
 } TEasyUBXSendStatus;
 
 struct eubx_handle {
-	bool 					is_initialized;			// is set to true if handle is initialized
-	TEasyUBXError			last_error;				// last error code, will be OK if an operation was successful
+	bool                  is_initialized;			// is set to true if handle is initialized
+	TEasyUBXError			    last_error;				  // last error code, will be OK if an operation was successful
 	TEasyUBXReceiveStatus	receive_status;
+  uint8_t               receive_class;
+  uint8_t               receive_id;
+  uint16_t              receive_length;
+  uint8_t               receive_ck_a;
+  uint8_t               receive_ck_b;
+  uint16_t              receive_position;
+  uint8_t               receive_buffer[UBX_RECEIVE_BUFFER_SIZE];
 	TEasyUBXSendStatus		send_status;
 };
 
