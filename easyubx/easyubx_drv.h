@@ -37,7 +37,7 @@ extern "C"
 #include <stdbool.h>
 #include <stdint.h>
 
-#define UBX_RECEIVE_BUFFER_SIZE     128
+#define UBX_MESSAGE_BUFFER_SIZE     128
 
 const uint8_t EUBX_SYNC1					  = 0xb5;
 const uint8_t EUBX_SYNC2					  = 0x62;
@@ -119,18 +119,23 @@ typedef enum {
 	EUBXSending
 } TEasyUBXSendStatus;
 
+struct eubx_message {
+  uint8_t               message_class;
+  uint8_t               id;
+  uint16_t              length;
+  uint8_t               ck_a;
+  uint8_t               ck_b;
+  uint8_t               buffer[UBX_MESSAGE_BUFFER_SIZE];
+};
+
 struct eubx_handle {
 	bool                  is_initialized;			// is set to true if handle is initialized
 	TEasyUBXError			    last_error;				  // last error code, will be OK if an operation was successful
 	TEasyUBXReceiveStatus	receive_status;
-  uint8_t               receive_class;
-  uint8_t               receive_id;
-  uint16_t              receive_length;
-  uint8_t               receive_ck_a;
-  uint8_t               receive_ck_b;
+  struct eubx_message   receive_message;
   uint16_t              receive_position;
-  uint8_t               receive_buffer[UBX_RECEIVE_BUFFER_SIZE];
 	TEasyUBXSendStatus		send_status;
+  struct eubx_message   send_message;
 };
 
 TEasyUBXError eubx_init(struct eubx_handle * pHandle);

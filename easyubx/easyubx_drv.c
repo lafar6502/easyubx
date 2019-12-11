@@ -31,6 +31,7 @@
 #include "easyubx_drv.h"
 
 static void handle_receive_message(struct eubx_handle * pHandle);
+static TEasyUBXError calculate_checksum(const struct eubx_message * message, uint8_t * ck_a, uint8_t * ck_b);
 
 TEasyUBXError eubx_init(struct eubx_handle * pHandle)
 {
@@ -39,14 +40,21 @@ TEasyUBXError eubx_init(struct eubx_handle * pHandle)
 	if (NULL != pHandle) {
 		pHandle->is_initialized = true;
 		pHandle->last_error = EUBX_ERROR_OK;
+    
 		pHandle->receive_status = EUBXReceiveExpectSync1;
-    pHandle->receive_class = 0;
-    pHandle->receive_id = 0;
-    pHandle->receive_length = 0;
+    pHandle->receive_message.message_class = 0;
+    pHandle->receive_message.id = 0;
+    pHandle->receive_message.length = 0;
+    pHandle->receive_message.ck_a = 0;
+    pHandle->receive_message.ck_b = 0;
     pHandle->receive_position = 0;
-    pHandle->receive_ck_a = 0;
-    pHandle->receive_ck_b = 0;
+    
 		pHandle->send_status = EUBXSendIdle;
+    pHandle->send_message.message_class = 0;
+    pHandle->send_message.id = 0;
+    pHandle->send_message.length = 0;
+    pHandle->send_message.ck_a = 0;
+    pHandle->send_message.ck_b = 0;
 		
 		rc = pHandle->last_error;
 	}
@@ -68,6 +76,8 @@ TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
 	}
 
  if (EUBX_ERROR_OK == rc) {
+    pHandle->last_error = EUBX_ERROR_OK;
+  
 		switch (pHandle->receive_status) {
 			case EUBXReceiveExpectSync1:
 				if (EUBX_SYNC1 == byte) {
@@ -85,23 +95,23 @@ TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
 				break;
 				
 			case EUBXReceiveExpectClass:
-        pHandle->receive_class = byte;
+        pHandle->receive_message.message_class = byte;
         pHandle->receive_status = EUBXReceiveExpectId;
 				break;
 
 			case EUBXReceiveExpectId:
-        pHandle->receive_id = byte;
+        pHandle->receive_message.id = byte;
         pHandle->receive_status = EUBXReceiveExpectLength1;
 				break;
 
 			case EUBXReceiveExpectLength1:
-        pHandle->receive_length = byte;
+        pHandle->receive_message.length = byte;
         pHandle->receive_status = EUBXReceiveExpectLength2;
 				break;
 				
       case EUBXReceiveExpectLength2:
-        pHandle->receive_length = pHandle->receive_length + (256 * (uint16_t)byte);
-        if (0 == pHandle->receive_length) {
+        pHandle->receive_message.length = pHandle->receive_message.length + (256 * (uint16_t)byte);
+        if (0 == pHandle->receive_message.length) {
           pHandle->receive_status = EUBXReceiveExpectCKA;
         }
         else {
@@ -111,26 +121,28 @@ TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
         break;
         
       case EUBXReceiveExpectContent:
-        if (UBX_RECEIVE_BUFFER_SIZE >= pHandle->receive_position) {
+        if (UBX_MESSAGE_BUFFER_SIZE >= pHandle->receive_position) {
           pHandle->last_error = EUBX_ERROR_RECEIVE_OVERFLOW;
         }
         else {
-          pHandle->receive_buffer[pHandle->receive_position] = byte;
+          pHandle->receive_message.buffer[pHandle->receive_position] = byte;
         }
         pHandle->receive_position += 1;
-        if (pHandle->receive_position == pHandle->receive_length) {
+        if (pHandle->receive_position == pHandle->receive_message.length) {
           pHandle->receive_status = EUBXReceiveExpectCKA;
         }
         break;
 
       case EUBXReceiveExpectCKA:
-        pHandle->receive_ck_a = byte;
+        pHandle->receive_message.ck_a = byte;
         pHandle->receive_status = EUBXReceiveExpectCKB;
         break;
 
       case EUBXReceiveExpectCKB:
-        pHandle->receive_ck_b = byte;
-        handle_receive_message(pHandle);
+        pHandle->receive_message.ck_b = byte;
+        if (EUBX_ERROR_OK == pHandle->last_error) {
+          handle_receive_message(pHandle);
+        }
         pHandle->receive_status = EUBXReceiveExpectSync1;
         break;
         
@@ -139,7 +151,6 @@ TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
 				break;
 		}
 		
-		pHandle->last_error = EUBX_ERROR_OK;
 		rc = pHandle->last_error;
 	}
 	
@@ -147,5 +158,15 @@ TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
 }
 
 void handle_receive_message(struct eubx_handle * pHandle)
+{
+  uint8_t ck_a = 0;
+  uint8_t ck_b = 0;
+  
+  TEasyUBXError rc = calculate_checksum(&pHandle->receive_message, &ck_a, &ck_b);
+
+  
+}
+
+TEasyUBXError calculate_checksum(const struct eubx_message * message, uint8_t * ck_a, uint8_t * ck_b)
 {
 }
