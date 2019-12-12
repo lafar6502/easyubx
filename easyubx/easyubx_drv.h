@@ -39,67 +39,68 @@ extern "C"
 
 #define UBX_MESSAGE_BUFFER_SIZE     128
 
-const uint8_t EUBX_SYNC1					  = 0xb5;
-const uint8_t EUBX_SYNC2					  = 0x62;
+#define EUBX_SYNC1					  0xb5
+#define EUBX_SYNC2					  0x62
 
-const uint8_t EUBX_CLASS_NAV				= 0x01;
-const uint8_t EUBX_CLASS_RXM				= 0x02;
-const uint8_t EUBX_CLASS_INF				= 0x04;
-const uint8_t EUBX_CLASS_ACK				= 0x05;
-const uint8_t EUBX_CLASS_CFG				= 0x06;
-const uint8_t EUBX_CLASS_MON				= 0x0a;
-const uint8_t EUBX_CLASS_AID				= 0x0b;
-const uint8_t EUBX_CLASS_TIM				= 0x0d;
-const uint8_t EUBX_CLASS_LOG				= 0x21;
+#define EUBX_CLASS_NAV				0x01
+#define EUBX_CLASS_RXM				0x02
+#define EUBX_CLASS_INF				0x04
+#define EUBX_CLASS_ACK				0x05
+#define EUBX_CLASS_CFG				0x06
+#define EUBX_CLASS_MON				0x0a
+#define EUBX_CLASS_AID				0x0b
+#define EUBX_CLASS_TIM				0x0d
+#define EUBX_CLASS_LOG				0x21
 
-const uint8_t EUBX_ID_ACK_ACK				= 0x01;
-const uint8_t EUBX_ID_ACK_NAK				= 0x00;
+#define EUBX_ID_ACK_ACK				0x01
+#define EUBX_ID_ACK_NAK				0x00
 
-const uint8_t EUBX_ID_AID_ALM				= 0x00;
+#define EUBX_ID_AID_ALM				0x00
 // TODO: to be continued
 
-const uint8_t EUBX_ID_CFG_ANT				= 0x13;
-const uint8_t EUBX_ID_CFG_CFG				= 0x09;
-const uint8_t EUBX_ID_CFG_DAT				= 0x06;
-const uint8_t EUBX_ID_CFG_GNSS			= 0x3d;
-const uint8_t EUBX_ID_CFG_INF				= 0x02;
-const uint8_t EUBX_ID_CFG_ITFM				= 0x39;
-const uint8_t EUBX_ID_CFG_LOGFILTER			= 0x47;
-const uint8_t EUBX_ID_CFG_MSG				= 0x01;
-const uint8_t EUBX_ID_CFG_NAV5				= 0x24;
-const uint8_t EUBX_ID_CFG_NAVX5				= 0x23;
-const uint8_t EUBX_ID_CFG_NMEA				= 0x17;
-const uint8_t EUBX_ID_CFG_PM2				= 0x3b;
-const uint8_t EUBX_ID_CFG_PRT				= 0x00;
-const uint8_t EUBX_ID_CFG_RATE				= 0x08;
-const uint8_t EUBX_ID_CFG_RINV				= 0x34;
-const uint8_t EUBX_ID_CFG_RST				= 0x04;
-const uint8_t EUBX_ID_CFG_RXM				= 0x11;
-const uint8_t EUBX_ID_CFG_SBAS				= 0x16;
-const uint8_t EUBX_ID_CFG_TP5				= 0x31;
-const uint8_t EUBX_ID_CFG_USB				= 0x1b;
+#define EUBX_ID_CFG_ANT				0x13
+#define EUBX_ID_CFG_CFG				0x09
+#define EUBX_ID_CFG_DAT				0x06
+#define EUBX_ID_CFG_GNSS			0x3d
+#define EUBX_ID_CFG_INF				0x02
+#define EUBX_ID_CFG_ITFM				0x39
+#define EUBX_ID_CFG_LOGFILTER			0x47
+#define EUBX_ID_CFG_MSG				0x01
+#define EUBX_ID_CFG_NAV5				0x24
+#define EUBX_ID_CFG_NAVX5				0x23
+#define EUBX_ID_CFG_NMEA				0x17
+#define EUBX_ID_CFG_PM2				0x3b
+#define EUBX_ID_CFG_PRT				0x00
+#define EUBX_ID_CFG_RATE				0x08
+#define EUBX_ID_CFG_RINV				0x34
+#define EUBX_ID_CFG_RST				0x04
+#define EUBX_ID_CFG_RXM				0x11
+#define EUBX_ID_CFG_SBAS				0x16
+#define EUBX_ID_CFG_TP5				0x31
+#define EUBX_ID_CFG_USB				0x1b
 
-const uint8_t EUBX_ID_INF_DEBUG				    = 0x04;
-const uint8_t EUBX_ID_INF_ERROR				    = 0x00;
-const uint8_t EUBX_ID_INF_NOTICE			    = 0x02;
-const uint8_t EUBX_ID_INF_TEST				    = 0x03;
-const uint8_t EUBX_ID_INF_WARNING			    = 0x01;
+#define EUBX_ID_INF_DEBUG				    0x04
+#define EUBX_ID_INF_ERROR				    0x00
+#define EUBX_ID_INF_NOTICE			    0x02
+#define EUBX_ID_INF_TEST				    0x03
+#define EUBX_ID_INF_WARNING			    0x01
 
-const uint8_t EUBX_ID_LOG_CREATE			    = 0x07;
-const uint8_t EUBX_ID_LOG_ERASE				    = 0x03;
-const uint8_t EUBX_ID_LOG_FINDTIME			  = 0x0e;
-const uint8_t EUBX_ID_LOG_INFO				    = 0x08;
-const uint8_t EUBX_ID_LOG_RETRIEVEPOS		  = 0x0b;
-const uint8_t EUBX_ID_LOG_RETRIEVESTRING	= 0x0d;
-const uint8_t EUBX_ID_LOG_RETRIEVE			  = 0x09;
-const uint8_t EUBX_ID_LOG_STRING			    = 0x04;
+#define EUBX_ID_LOG_CREATE			    0x07
+#define EUBX_ID_LOG_ERASE				    0x03
+#define EUBX_ID_LOG_FINDTIME			  0x0e
+#define EUBX_ID_LOG_INFO				    0x08
+#define EUBX_ID_LOG_RETRIEVEPOS		  0x0b
+#define EUBX_ID_LOG_RETRIEVESTRING	0x0d
+#define EUBX_ID_LOG_RETRIEVE			  0x09
+#define EUBX_ID_LOG_STRING			    0x04
 
 typedef enum {
 	EUBX_ERROR_OK = 0,
 	EUBX_ERROR_NULLPTR = -1,
 	EUBX_ERROR_CHECKSUM = -2,
   EUBX_ERROR_NOT_INITIALIZED = -3,
-  EUBX_ERROR_RECEIVE_OVERFLOW = -4
+  EUBX_ERROR_RECEIVE_OVERFLOW = -4,
+  EUBX_ERROR_UNKNOWN_CLASS = -5
 } TEasyUBXError;
 
 typedef enum {
@@ -121,11 +122,11 @@ typedef enum {
 
 struct eubx_message {
   uint8_t               message_class;
-  uint8_t               id;
-  uint16_t              length;
+  uint8_t               message_id;
+  uint16_t              message_length;
   uint8_t               ck_a;
   uint8_t               ck_b;
-  uint8_t               buffer[UBX_MESSAGE_BUFFER_SIZE];
+  uint8_t               message_buffer[UBX_MESSAGE_BUFFER_SIZE];
 };
 
 struct eubx_handle {

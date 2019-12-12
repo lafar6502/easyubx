@@ -31,7 +31,16 @@
 #include "easyubx_drv.h"
 
 static void handle_receive_message(struct eubx_handle * pHandle);
-static TEasyUBXError calculate_checksum(const struct eubx_message * message, uint8_t * ck_a, uint8_t * ck_b);
+static void handle_receive_class_nav(struct eubx_handle * pHandle);
+static void handle_receive_class_rxm(struct eubx_handle * pHandle);
+static void handle_receive_class_inf(struct eubx_handle * pHandle);
+static void handle_receive_class_ack(struct eubx_handle * pHandle);
+static void handle_receive_class_cfg(struct eubx_handle * pHandle);
+static void handle_receive_class_mon(struct eubx_handle * pHandle);
+static void handle_receive_class_aid(struct eubx_handle * pHandle);
+static void handle_receive_class_tim(struct eubx_handle * pHandle);
+static void handle_receive_class_log(struct eubx_handle * pHandle);
+static void calculate_checksum(const struct eubx_message * message, uint8_t * ck_a, uint8_t * ck_b);
 
 TEasyUBXError eubx_init(struct eubx_handle * pHandle)
 {
@@ -43,16 +52,16 @@ TEasyUBXError eubx_init(struct eubx_handle * pHandle)
     
 		pHandle->receive_status = EUBXReceiveExpectSync1;
     pHandle->receive_message.message_class = 0;
-    pHandle->receive_message.id = 0;
-    pHandle->receive_message.length = 0;
+    pHandle->receive_message.message_id = 0;
+    pHandle->receive_message.message_length = 0;
     pHandle->receive_message.ck_a = 0;
     pHandle->receive_message.ck_b = 0;
     pHandle->receive_position = 0;
     
 		pHandle->send_status = EUBXSendIdle;
     pHandle->send_message.message_class = 0;
-    pHandle->send_message.id = 0;
-    pHandle->send_message.length = 0;
+    pHandle->send_message.message_id = 0;
+    pHandle->send_message.message_length = 0;
     pHandle->send_message.ck_a = 0;
     pHandle->send_message.ck_b = 0;
 		
@@ -100,18 +109,18 @@ TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
 				break;
 
 			case EUBXReceiveExpectId:
-        pHandle->receive_message.id = byte;
+        pHandle->receive_message.message_id = byte;
         pHandle->receive_status = EUBXReceiveExpectLength1;
 				break;
 
 			case EUBXReceiveExpectLength1:
-        pHandle->receive_message.length = byte;
+        pHandle->receive_message.message_length = byte;
         pHandle->receive_status = EUBXReceiveExpectLength2;
 				break;
 				
       case EUBXReceiveExpectLength2:
-        pHandle->receive_message.length = pHandle->receive_message.length + (256 * (uint16_t)byte);
-        if (0 == pHandle->receive_message.length) {
+        pHandle->receive_message.message_length = pHandle->receive_message.message_length + (256 * (uint16_t)byte);
+        if (0 == pHandle->receive_message.message_length) {
           pHandle->receive_status = EUBXReceiveExpectCKA;
         }
         else {
@@ -125,10 +134,10 @@ TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
           pHandle->last_error = EUBX_ERROR_RECEIVE_OVERFLOW;
         }
         else {
-          pHandle->receive_message.buffer[pHandle->receive_position] = byte;
+          pHandle->receive_message.message_buffer[pHandle->receive_position] = byte;
         }
         pHandle->receive_position += 1;
-        if (pHandle->receive_position == pHandle->receive_message.length) {
+        if (pHandle->receive_position == pHandle->receive_message.message_length) {
           pHandle->receive_status = EUBXReceiveExpectCKA;
         }
         break;
@@ -162,11 +171,120 @@ void handle_receive_message(struct eubx_handle * pHandle)
   uint8_t ck_a = 0;
   uint8_t ck_b = 0;
   
-  TEasyUBXError rc = calculate_checksum(&pHandle->receive_message, &ck_a, &ck_b);
+  calculate_checksum(&pHandle->receive_message, &ck_a, &ck_b);
 
+  if ((ck_a == pHandle->receive_message.ck_a) && (ck_b == pHandle->receive_message.ck_b)) {
+    switch (pHandle->receive_message.message_class) {
+      case EUBX_CLASS_NAV:
+        handle_receive_class_nav(&pHandle->receive_message);
+        break;
+        
+      case EUBX_CLASS_RXM:
+        handle_receive_class_rxm(&pHandle->receive_message);
+        break;
+        
+      case EUBX_CLASS_INF:
+        handle_receive_class_inf(&pHandle->receive_message);
+        break;
+        
+      case EUBX_CLASS_ACK:
+        handle_receive_class_ack(&pHandle->receive_message);
+        break;
+        
+      case EUBX_CLASS_CFG:
+        handle_receive_class_cfg(&pHandle->receive_message);
+        break;
+        
+      case EUBX_CLASS_MON:
+        handle_receive_class_mon(&pHandle->receive_message);
+        break;
+        
+      case EUBX_CLASS_AID:
+        handle_receive_class_aid(&pHandle->receive_message);
+        break;
+        
+      case EUBX_CLASS_TIM:
+        handle_receive_class_tim(&pHandle->receive_message);
+        break;
+        
+      case EUBX_CLASS_LOG:
+        handle_receive_class_log(&pHandle->receive_message);
+        break;
+
+      default:
+        pHandle->last_error = EUBX_ERROR_UNKNOWN_CLASS;
+        break;
+    }
+  }
+  else {
+    pHandle->last_error = EUBX_ERROR_CHECKSUM;
+  }
+}
+
+void handle_receive_class_nav(struct eubx_handle * pHandle)
+{
   
 }
 
-TEasyUBXError calculate_checksum(const struct eubx_message * message, uint8_t * ck_a, uint8_t * ck_b)
+void handle_receive_class_rxm(struct eubx_handle * pHandle)
 {
+  
+}
+
+void handle_receive_class_inf(struct eubx_handle * pHandle)
+{
+  
+}
+
+void handle_receive_class_ack(struct eubx_handle * pHandle)
+{
+  
+}
+
+void handle_receive_class_cfg(struct eubx_handle * pHandle)
+{
+  
+}
+
+void handle_receive_class_mon(struct eubx_handle * pHandle)
+{
+  
+}
+
+void handle_receive_class_aid(struct eubx_handle * pHandle)
+{
+  
+}
+
+void handle_receive_class_tim(struct eubx_handle * pHandle)
+{
+  
+}
+
+void handle_receive_class_log(struct eubx_handle * pHandle)
+{
+  
+}
+
+void calculate_checksum(const struct eubx_message * message, uint8_t * ck_a, uint8_t * ck_b)
+{
+  *ck_a = 0;
+  *ck_b = 0;
+
+  *ck_a = *ck_a + message->message_class;
+  *ck_b = *ck_b + *ck_a;
+
+  *ck_a = *ck_a + message->message_id;
+  *ck_b = *ck_b + *ck_a;
+
+  *ck_a = *ck_a + message->message_length % 256;
+  *ck_b = *ck_b + *ck_a;
+
+  *ck_a = *ck_a + message->message_length / 256;
+  *ck_b = *ck_b + *ck_a;
+
+  for (int i = 0; i < message->message_length; i++) {
+    *ck_a = *ck_a + message->message_buffer[i];
+    *ck_b = *ck_b + *ck_a;
+  }
 }
