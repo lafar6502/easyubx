@@ -29,6 +29,7 @@
 #include <stddef.h>
 
 #include "easyubx_drv.h"
+#include "easyubx_drv_mon.h"
 
 static void handle_receive_message(struct eubx_handle * pHandle);
 static void handle_receive_class_nav(struct eubx_handle * pHandle);
@@ -36,10 +37,15 @@ static void handle_receive_class_rxm(struct eubx_handle * pHandle);
 static void handle_receive_class_inf(struct eubx_handle * pHandle);
 static void handle_receive_class_ack(struct eubx_handle * pHandle);
 static void handle_receive_class_cfg(struct eubx_handle * pHandle);
-static void handle_receive_class_mon(struct eubx_handle * pHandle);
+static void handle_receive_class_upd(struct eubx_handle * pHandle);
 static void handle_receive_class_aid(struct eubx_handle * pHandle);
 static void handle_receive_class_tim(struct eubx_handle * pHandle);
+static void handle_receive_class_esf(struct eubx_handle * pHandle);
+static void handle_receive_class_mga(struct eubx_handle * pHandle);
 static void handle_receive_class_log(struct eubx_handle * pHandle);
+static void handle_receive_class_sec(struct eubx_handle * pHandle);
+static void handle_receive_class_hnr(struct eubx_handle * pHandle);
+
 static void calculate_checksum(const struct eubx_message * message, uint8_t * ck_a, uint8_t * ck_b);
 
 TEasyUBXError eubx_init(struct eubx_handle * pHandle)
@@ -64,11 +70,27 @@ TEasyUBXError eubx_init(struct eubx_handle * pHandle)
     pHandle->send_message.message_length = 0;
     pHandle->send_message.ck_a = 0;
     pHandle->send_message.ck_b = 0;
+
+    pHandle->send_byte = NULL;
+    pHandle->send_buffer = NULL;
 		
 		rc = pHandle->last_error;
 	}
 	
 	return rc;
+}
+
+TEasyUBXError eubx_set_send_functions(struct eubx_handle * pHandle, eubx_send_byte send_byte, eubx_send_buffer send_buffer, void * usr_ptr)
+{
+  TEasyUBXError rc = EUBX_ERROR_NULLPTR;
+
+  if ((NULL != pHandle) && (NULL != send_byte)) {
+    pHandle->send_byte = send_byte;
+    pHandle->send_buffer = send_buffer;
+    pHandle->send_usr_ptr = usr_ptr;
+  }
+
+  return rc;
 }
 
 TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
@@ -166,6 +188,34 @@ TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
 	return rc;
 }
 
+TEasyUBXError eubx_send_message(struct eubx_handle * pHandle)
+{
+  TEasyUBXError rc = EUBX_ERROR_NULLPTR;
+
+  if ((NULL != pHandle) && (NULL != pHandle->send_byte)) {
+    calculate_checksum(&pHandle->send_message, &pHandle->send_message.ck_a, &pHandle->send_message.ck_b);
+
+    pHandle->send_byte(pHandle->send_usr_ptr, EUBX_SYNC1);
+    pHandle->send_byte(pHandle->send_usr_ptr, EUBX_SYNC2);
+    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.message_class);
+    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.message_id);
+    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.message_length % 256);
+    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.message_length / 256);
+    if (NULL != pHandle->send_buffer) {
+      pHandle->send_buffer(pHandle->send_usr_ptr, pHandle->send_message.message_buffer, pHandle->send_message.message_length);
+    }
+    else {
+      for (int i = 0; i < pHandle->send_message.message_length; i++) {
+        pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.message_buffer[i]);
+      }
+    }
+    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.ck_a);
+    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.ck_b);
+  }
+
+  return rc;
+}
+
 void handle_receive_message(struct eubx_handle * pHandle)
 {
   uint8_t ck_a = 0;
@@ -195,8 +245,12 @@ void handle_receive_message(struct eubx_handle * pHandle)
         handle_receive_class_cfg(&pHandle->receive_message);
         break;
         
+      case EUBX_CLASS_UPD:
+        handle_receive_class_upd(&pHandle->receive_message);
+        break;
+        
       case EUBX_CLASS_MON:
-        handle_receive_class_mon(&pHandle->receive_message);
+        eubx_drv_handle_receive_class_mon(&pHandle->receive_message);
         break;
         
       case EUBX_CLASS_AID:
@@ -207,10 +261,26 @@ void handle_receive_message(struct eubx_handle * pHandle)
         handle_receive_class_tim(&pHandle->receive_message);
         break;
         
+      case EUBX_CLASS_ESF:
+        handle_receive_class_esf(&pHandle->receive_message);
+        break;
+        
+      case EUBX_CLASS_MGA:
+        handle_receive_class_mga(&pHandle->receive_message);
+        break;
+        
       case EUBX_CLASS_LOG:
         handle_receive_class_log(&pHandle->receive_message);
         break;
 
+      case EUBX_CLASS_SEC:
+        handle_receive_class_sec(&pHandle->receive_message);
+        break;
+        
+      case EUBX_CLASS_HNR:
+        handle_receive_class_hnr(&pHandle->receive_message);
+        break;
+        
       default:
         pHandle->last_error = EUBX_ERROR_UNKNOWN_CLASS;
         break;
@@ -246,7 +316,7 @@ void handle_receive_class_cfg(struct eubx_handle * pHandle)
   
 }
 
-void handle_receive_class_mon(struct eubx_handle * pHandle)
+void handle_receive_class_upd(struct eubx_handle * pHandle)
 {
   
 }
@@ -261,7 +331,27 @@ void handle_receive_class_tim(struct eubx_handle * pHandle)
   
 }
 
+void handle_receive_class_esf(struct eubx_handle * pHandle)
+{
+  
+}
+
+void handle_receive_class_mga(struct eubx_handle * pHandle)
+{
+  
+}
+
 void handle_receive_class_log(struct eubx_handle * pHandle)
+{
+  
+}
+
+void handle_receive_class_sec(struct eubx_handle * pHandle)
+{
+  
+}
+
+void handle_receive_class_hnr(struct eubx_handle * pHandle)
 {
   
 }
