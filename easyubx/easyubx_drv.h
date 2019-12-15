@@ -179,6 +179,12 @@ typedef enum {
 	EUBXSending
 } TEasyUBXSendStatus;
 
+typedef enum {
+  EUBXReceivedMonVersion,
+
+  EUBXDebugMessage1 = 1000
+} TEasyUBXEvent;
+
 struct eubx_message {
   uint8_t               message_class;
   uint8_t               message_id;
@@ -190,6 +196,7 @@ struct eubx_message {
 
 typedef void (*eubx_send_byte)(void * usr_ptr, uint8_t buffer);
 typedef void (*eubx_send_buffer)(void * usr_ptr, const uint8_t * buffer, uint16_t length);
+typedef void (*eubx_notify_event)(void * usr_ptr, TEasyUBXEvent event);
 
 struct eubx_handle {
 	bool                  is_initialized;			// is set to true if handle is initialized
@@ -201,16 +208,18 @@ struct eubx_handle {
   struct eubx_message   send_message;
   eubx_send_byte        send_byte;
   eubx_send_buffer      send_buffer;
-  void                  * send_usr_ptr;
+  eubx_notify_event     notify_event;
+  void                  * callback_usr_ptr;
 };
 
 TEasyUBXError eubx_init(struct eubx_handle * pHandle);
-TEasyUBXError eubx_set_send_functions(struct eubx_handle * pHandle, eubx_send_byte send_byte, eubx_send_buffer send_buffer, void * usr_ptr);
+TEasyUBXError eubx_set_callback_functions(struct eubx_handle * pHandle, eubx_send_byte send_byte, eubx_send_buffer send_buffer, eubx_notify_event notify_event, void * usr_ptr);
 TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte);
 
 TEasyUBXError eubx_poll_mon_version(struct eubx_handle * pHandle);
 
 TEasyUBXError eubx_send_message(struct eubx_handle * pHandle);
+TEasyUBXError eubx_send_notification(struct eubx_handle * pHandle, TEasyUBXEvent event);
 
 #ifdef __cplusplus
 } // extern "C"

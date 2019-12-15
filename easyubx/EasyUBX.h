@@ -35,12 +35,24 @@ class EasyUBX {
     EasyUBX(Stream & stream);
     ~EasyUBX();
 
+    void set_debug_stream(Stream * stream);
+
     void begin();
     void loop();
+
+  private:
+    static void send_byte_cb(void * usr_ptr, uint8_t buffer);
+    static void send_buffer_cb(void * usr_ptr, const uint8_t * buffer, uint16_t length);
+    static void notify_cb(void * usr_ptr, TEasyUBXEvent event);
+
+    void send_byte(uint8_t buffer);
+    void send_buffer(const uint8_t * buffer, uint16_t length);
+    void notify(TEasyUBXEvent event);
 
   private:
     bool m_initialized;
 
     struct eubx_handle m_eubx_handle;
     Stream & m_stream;
+    Stream * m_debug_stream;
 };

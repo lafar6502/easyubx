@@ -73,6 +73,8 @@ TEasyUBXError eubx_init(struct eubx_handle * pHandle)
 
     pHandle->send_byte = NULL;
     pHandle->send_buffer = NULL;
+    pHandle->notify_event = NULL;
+    pHandle->callback_usr_ptr = NULL;
 		
 		rc = pHandle->last_error;
 	}
@@ -80,14 +82,15 @@ TEasyUBXError eubx_init(struct eubx_handle * pHandle)
 	return rc;
 }
 
-TEasyUBXError eubx_set_send_functions(struct eubx_handle * pHandle, eubx_send_byte send_byte, eubx_send_buffer send_buffer, void * usr_ptr)
+TEasyUBXError eubx_set_callback_functions(struct eubx_handle * pHandle, eubx_send_byte send_byte, eubx_send_buffer send_buffer, eubx_notify_event notify_event, void * usr_ptr)
 {
   TEasyUBXError rc = EUBX_ERROR_NULLPTR;
 
-  if ((NULL != pHandle) && (NULL != send_byte)) {
+  if ((NULL != pHandle) && (NULL != send_byte) && (NULL != notify_event)) {
     pHandle->send_byte = send_byte;
     pHandle->send_buffer = send_buffer;
-    pHandle->send_usr_ptr = usr_ptr;
+    pHandle->notify_event = notify_event;
+    pHandle->callback_usr_ptr = usr_ptr;
   }
 
   return rc;
@@ -152,7 +155,7 @@ TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
         break;
         
       case EUBXReceiveExpectContent:
-        if (UBX_MESSAGE_BUFFER_SIZE >= pHandle->receive_position) {
+        if (UBX_MESSAGE_BUFFER_SIZE < pHandle->receive_position) {
           pHandle->last_error = EUBX_ERROR_RECEIVE_OVERFLOW;
         }
         else {
@@ -195,25 +198,34 @@ TEasyUBXError eubx_send_message(struct eubx_handle * pHandle)
   if ((NULL != pHandle) && (NULL != pHandle->send_byte)) {
     calculate_checksum(&pHandle->send_message, &pHandle->send_message.ck_a, &pHandle->send_message.ck_b);
 
-    pHandle->send_byte(pHandle->send_usr_ptr, EUBX_SYNC1);
-    pHandle->send_byte(pHandle->send_usr_ptr, EUBX_SYNC2);
-    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.message_class);
-    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.message_id);
-    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.message_length % 256);
-    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.message_length / 256);
+    pHandle->send_byte(pHandle->callback_usr_ptr, EUBX_SYNC1);
+    pHandle->send_byte(pHandle->callback_usr_ptr, EUBX_SYNC2);
+    pHandle->send_byte(pHandle->callback_usr_ptr, pHandle->send_message.message_class);
+    pHandle->send_byte(pHandle->callback_usr_ptr, pHandle->send_message.message_id);
+    pHandle->send_byte(pHandle->callback_usr_ptr, pHandle->send_message.message_length % 256);
+    pHandle->send_byte(pHandle->callback_usr_ptr, pHandle->send_message.message_length / 256);
     if (NULL != pHandle->send_buffer) {
-      pHandle->send_buffer(pHandle->send_usr_ptr, pHandle->send_message.message_buffer, pHandle->send_message.message_length);
+      pHandle->send_buffer(pHandle->callback_usr_ptr, pHandle->send_message.message_buffer, pHandle->send_message.message_length);
     }
     else {
       for (int i = 0; i < pHandle->send_message.message_length; i++) {
-        pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.message_buffer[i]);
+        pHandle->send_byte(pHandle->callback_usr_ptr, pHandle->send_message.message_buffer[i]);
       }
     }
-    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.ck_a);
-    pHandle->send_byte(pHandle->send_usr_ptr, pHandle->send_message.ck_b);
+    pHandle->send_byte(pHandle->callback_usr_ptr, pHandle->send_message.ck_a);
+    pHandle->send_byte(pHandle->callback_usr_ptr, pHandle->send_message.ck_b);
   }
 
   return rc;
+}
+
+TEasyUBXError eubx_send_notification(struct eubx_handle * pHandle, TEasyUBXEvent event)
+{
+  TEasyUBXError rc = EUBX_ERROR_NULLPTR;
+
+  if ((NULL != pHandle) && (NULL != pHandle->notify_event)) {
+    pHandle->notify_event(pHandle->callback_usr_ptr, event);
+  }
 }
 
 void handle_receive_message(struct eubx_handle * pHandle)
@@ -226,59 +238,59 @@ void handle_receive_message(struct eubx_handle * pHandle)
   if ((ck_a == pHandle->receive_message.ck_a) && (ck_b == pHandle->receive_message.ck_b)) {
     switch (pHandle->receive_message.message_class) {
       case EUBX_CLASS_NAV:
-        handle_receive_class_nav(&pHandle->receive_message);
+        handle_receive_class_nav(pHandle);
         break;
         
       case EUBX_CLASS_RXM:
-        handle_receive_class_rxm(&pHandle->receive_message);
+        handle_receive_class_rxm(pHandle);
         break;
         
       case EUBX_CLASS_INF:
-        handle_receive_class_inf(&pHandle->receive_message);
+        handle_receive_class_inf(pHandle);
         break;
         
       case EUBX_CLASS_ACK:
-        handle_receive_class_ack(&pHandle->receive_message);
+        handle_receive_class_ack(pHandle);
         break;
         
       case EUBX_CLASS_CFG:
-        handle_receive_class_cfg(&pHandle->receive_message);
+        handle_receive_class_cfg(pHandle);
         break;
         
       case EUBX_CLASS_UPD:
-        handle_receive_class_upd(&pHandle->receive_message);
+        handle_receive_class_upd(pHandle);
         break;
         
       case EUBX_CLASS_MON:
-        eubx_drv_handle_receive_class_mon(&pHandle->receive_message);
+        eubx_drv_handle_receive_class_mon(pHandle);
         break;
         
       case EUBX_CLASS_AID:
-        handle_receive_class_aid(&pHandle->receive_message);
+        handle_receive_class_aid(pHandle);
         break;
         
       case EUBX_CLASS_TIM:
-        handle_receive_class_tim(&pHandle->receive_message);
+        handle_receive_class_tim(pHandle);
         break;
         
       case EUBX_CLASS_ESF:
-        handle_receive_class_esf(&pHandle->receive_message);
+        handle_receive_class_esf(pHandle);
         break;
         
       case EUBX_CLASS_MGA:
-        handle_receive_class_mga(&pHandle->receive_message);
+        handle_receive_class_mga(pHandle);
         break;
         
       case EUBX_CLASS_LOG:
-        handle_receive_class_log(&pHandle->receive_message);
+        handle_receive_class_log(pHandle);
         break;
 
       case EUBX_CLASS_SEC:
-        handle_receive_class_sec(&pHandle->receive_message);
+        handle_receive_class_sec(pHandle);
         break;
         
       case EUBX_CLASS_HNR:
-        handle_receive_class_hnr(&pHandle->receive_message);
+        handle_receive_class_hnr(pHandle);
         break;
         
       default:

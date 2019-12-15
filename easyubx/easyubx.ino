@@ -40,15 +40,19 @@ EasyUBX easy_ubx(gps_serial);
 
 void setup() {
   Serial.begin(115200);
-  Serial.println(F("EasyUBX Test program 2019-11-30"));
+  Serial.println(F("EasyUBX Test program 2019-12-15"));
 
   gps_serial.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);
   gps_serial.setTimeout(2);
   gps_serial.flush();
 
+  easy_ubx.set_debug_stream(&Serial);
+
   easy_ubx.begin();
 }
 
 void loop() {
-  easy_ubx.loop();
+  while (1) {
+    easy_ubx.loop();
+  }
 }

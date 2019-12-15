@@ -164,5 +164,5 @@ void handle_receive_mon_txbuf(struct eubx_handle * pHandle)
 
 void handle_receive_mon_ver(struct eubx_handle * pHandle)
 {
-  
+  eubx_send_notification(pHandle, EUBXReceivedMonVersion);
 }
