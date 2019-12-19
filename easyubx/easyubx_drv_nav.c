@@ -1,5 +1,5 @@
 /*
- * Test Program for the Easy UBX Arduino library
+ * source file for the Easy UBX C library for the mon functions 
  */
  
 /*
@@ -26,33 +26,14 @@
   SOFTWARE.
 */
 
-#include <HardwareSerial.h>
-#include <WiFi.h>
+#include "easyubx_drv.h"
+#include "easyubx_drv_consts.h"
+#include "easyubx_drv_nav.h"
 
-#include "EasyUBX.h"
-
-#define GPS_SERIAL_DEVICE       1
-#define GPS_TX                  12
-#define GPS_RX                  15
-
-HardwareSerial gps_serial(GPS_SERIAL_DEVICE);
-EasyUBX easy_ubx(gps_serial);
-
-void setup() {
-  Serial.begin(115200);
-  Serial.println(F("EasyUBX Test program 2019-12-18"));
-
-  gps_serial.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);
-  gps_serial.setTimeout(2);
-  gps_serial.flush();
-
-  easy_ubx.set_debug_stream(&Serial);
-
-  easy_ubx.begin();
-}
-
-void loop() {
-  while (1) {
-    easy_ubx.loop();
+void eubx_drv_handle_receive_class_nav(struct eubx_handle * pHandle)
+{  
+  switch (pHandle->receive_message.message_id) {
+    default:
+      break;
   }
 }

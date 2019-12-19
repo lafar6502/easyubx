@@ -29,14 +29,14 @@
 #include <stddef.h>
 
 #include "easyubx_drv.h"
+#include "easyubx_drv_consts.h"
 #include "easyubx_drv_mon.h"
+#include "easyubx_drv_nav.h"
 
 static void handle_receive_message(struct eubx_handle * pHandle);
-static void handle_receive_class_nav(struct eubx_handle * pHandle);
 static void handle_receive_class_rxm(struct eubx_handle * pHandle);
 static void handle_receive_class_inf(struct eubx_handle * pHandle);
 static void handle_receive_class_ack(struct eubx_handle * pHandle);
-static void handle_receive_class_cfg(struct eubx_handle * pHandle);
 static void handle_receive_class_upd(struct eubx_handle * pHandle);
 static void handle_receive_class_aid(struct eubx_handle * pHandle);
 static void handle_receive_class_tim(struct eubx_handle * pHandle);
@@ -71,10 +71,14 @@ TEasyUBXError eubx_init(struct eubx_handle * pHandle)
     pHandle->send_message.ck_a = 0;
     pHandle->send_message.ck_b = 0;
 
+    pHandle->receive_buffer = NULL;
     pHandle->send_byte = NULL;
     pHandle->send_buffer = NULL;
     pHandle->notify_event = NULL;
     pHandle->callback_usr_ptr = NULL;
+
+    pHandle->receiver_info.chipset_version = EUBXChipsetNotSet;
+    pHandle->receiver_info.software_version[0] = 0;
 		
 		rc = pHandle->last_error;
 	}
@@ -82,11 +86,12 @@ TEasyUBXError eubx_init(struct eubx_handle * pHandle)
 	return rc;
 }
 
-TEasyUBXError eubx_set_callback_functions(struct eubx_handle * pHandle, eubx_send_byte send_byte, eubx_send_buffer send_buffer, eubx_notify_event notify_event, void * usr_ptr)
+TEasyUBXError eubx_set_callback_functions(struct eubx_handle * pHandle, eubx_receive_buffer receive_buffer, eubx_send_byte send_byte, eubx_send_buffer send_buffer, eubx_notify_event notify_event, void * usr_ptr)
 {
   TEasyUBXError rc = EUBX_ERROR_NULLPTR;
 
   if ((NULL != pHandle) && (NULL != send_byte) && (NULL != notify_event)) {
+    pHandle->receive_buffer = receive_buffer;
     pHandle->send_byte = send_byte;
     pHandle->send_buffer = send_buffer;
     pHandle->notify_event = notify_event;
@@ -94,6 +99,20 @@ TEasyUBXError eubx_set_callback_functions(struct eubx_handle * pHandle, eubx_sen
   }
 
   return rc;
+}
+
+TEasyUBXError eubx_loop(struct eubx_handle * pHandle)
+{
+  if (pHandle->receive_buffer != NULL) {
+    uint8_t buffer[16];
+    uint16_t length = pHandle->receive_buffer(pHandle->callback_usr_ptr, buffer, sizeof(buffer));
+
+    for (uint16_t i = 0; i < length; i++) {
+      eubx_receive_byte(pHandle, buffer[i]);
+    }
+  }
+
+  return pHandle->last_error;
 }
 
 TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
@@ -155,7 +174,7 @@ TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
         break;
         
       case EUBXReceiveExpectContent:
-        if (UBX_MESSAGE_BUFFER_SIZE < pHandle->receive_position) {
+        if (EUBX_MESSAGE_BUFFER_SIZE < pHandle->receive_position) {
           pHandle->last_error = EUBX_ERROR_RECEIVE_OVERFLOW;
         }
         else {
@@ -238,7 +257,7 @@ void handle_receive_message(struct eubx_handle * pHandle)
   if ((ck_a == pHandle->receive_message.ck_a) && (ck_b == pHandle->receive_message.ck_b)) {
     switch (pHandle->receive_message.message_class) {
       case EUBX_CLASS_NAV:
-        handle_receive_class_nav(pHandle);
+        eubx_drv_handle_receive_class_nav(pHandle);
         break;
         
       case EUBX_CLASS_RXM:
@@ -254,7 +273,7 @@ void handle_receive_message(struct eubx_handle * pHandle)
         break;
         
       case EUBX_CLASS_CFG:
-        handle_receive_class_cfg(pHandle);
+        eubx_drv_handle_receive_class_cfg(pHandle);
         break;
         
       case EUBX_CLASS_UPD:
@@ -303,11 +322,6 @@ void handle_receive_message(struct eubx_handle * pHandle)
   }
 }
 
-void handle_receive_class_nav(struct eubx_handle * pHandle)
-{
-  
-}
-
 void handle_receive_class_rxm(struct eubx_handle * pHandle)
 {
   
@@ -319,11 +333,6 @@ void handle_receive_class_inf(struct eubx_handle * pHandle)
 }
 
 void handle_receive_class_ack(struct eubx_handle * pHandle)
-{
-  
-}
-
-void handle_receive_class_cfg(struct eubx_handle * pHandle)
 {
   
 }

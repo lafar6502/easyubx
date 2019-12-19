@@ -41,10 +41,12 @@ class EasyUBX {
     void loop();
 
   private:
+    static uint16_t receive_buffer_cb(void * usr_ptr, uint8_t * buffer, uint16_t max_length);
     static void send_byte_cb(void * usr_ptr, uint8_t buffer);
     static void send_buffer_cb(void * usr_ptr, const uint8_t * buffer, uint16_t length);
     static void notify_cb(void * usr_ptr, TEasyUBXEvent event);
 
+    uint16_t receive_buffer(uint8_t * buffer, uint16_t max_length);
     void send_byte(uint8_t buffer);
     void send_buffer(const uint8_t * buffer, uint16_t length);
     void notify(TEasyUBXEvent event);

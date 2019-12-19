@@ -42,10 +42,12 @@ EasyUBX::~EasyUBX()
 void EasyUBX::begin()
 {
   if (EUBX_ERROR_OK == eubx_init(&m_eubx_handle)) {
-    eubx_set_callback_functions(&m_eubx_handle, send_byte_cb, send_buffer_cb, notify_cb, this);
+    eubx_set_callback_functions(&m_eubx_handle, receive_buffer_cb, send_byte_cb, send_buffer_cb, notify_cb, this);
     m_initialized = true;
 
+    eubx_poll_mon_gnss_selection(&m_eubx_handle);
     eubx_poll_mon_version(&m_eubx_handle);
+    eubx_poll_cfg_port(&m_eubx_handle);
   }
 }
 
@@ -57,11 +59,13 @@ void EasyUBX::set_debug_stream(Stream * stream)
 void EasyUBX::loop()
 {
   if (m_initialized) {
-    while (m_stream.available()) {
-      char value = m_stream.read();
-      eubx_receive_byte(&m_eubx_handle, value);
-    }
+    eubx_loop(&m_eubx_handle);
   }
+}
+
+uint16_t EasyUBX::receive_buffer_cb(void * usr_ptr, uint8_t * buffer, uint16_t max_length)
+{
+  return static_cast<EasyUBX *>(usr_ptr)->receive_buffer(buffer, max_length);
 }
 
 void EasyUBX::send_byte_cb(void * usr_ptr, uint8_t buffer)
@@ -77,6 +81,17 @@ void EasyUBX::send_buffer_cb(void * usr_ptr, const uint8_t * buffer, uint16_t le
 void EasyUBX::notify_cb(void * usr_ptr, TEasyUBXEvent event)
 {
   static_cast<EasyUBX *>(usr_ptr)->notify(event);
+}
+
+uint16_t EasyUBX::receive_buffer(uint8_t * buffer, uint16_t max_length)
+{
+  uint16_t received = 0;
+
+  while (m_stream.available() && (received < max_length)) {
+    buffer[received++] = m_stream.read();
+  }
+
+  return received;
 }
 
 void EasyUBX::send_byte(uint8_t buffer)
@@ -101,16 +116,26 @@ void EasyUBX::notify(TEasyUBXEvent event)
     m_debug_stream->print(" class=");
     m_debug_stream->print(m_eubx_handle.receive_message.message_class, HEX);
     m_debug_stream->print(" id=");
-    m_debug_stream->print(m_eubx_handle.receive_message.message_id, HEX);
-    m_debug_stream->print(" ck_a=");
-    m_debug_stream->print(m_eubx_handle.receive_message.ck_a, HEX);
-    m_debug_stream->print(" ck_b=");
-    m_debug_stream->println(m_eubx_handle.receive_message.ck_b, HEX);
+    m_debug_stream->println(m_eubx_handle.receive_message.message_id, HEX);
 
-    m_debug_stream->print("SW Version=");
-    m_debug_stream->print((const char *)m_eubx_handle.receive_message.message_buffer);
+    switch (event) {
+      case EUBXReceivedCfgPRT:
+        m_debug_stream->print("Port=");
+        m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[0]);
+        m_debug_stream->print(" InMask=");
+        m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[12], HEX);
+        m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[13], HEX);
+        m_debug_stream->print(" OutMask=");
+        m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[14], HEX);
+        m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[15], HEX);
+        break;
 
-    m_debug_stream->print(" HW Version=");
-    m_debug_stream->println((const char *)&m_eubx_handle.receive_message.message_buffer[30]);
+      case EUBXReceivedMonVersion:
+        m_debug_stream->print("Hardware=");
+        m_debug_stream->print(m_eubx_handle.receiver_info.chipset_version);
+        m_debug_stream->print(" Software=");
+        m_debug_stream->println(m_eubx_handle.receiver_info.software_version);
+        break;
+    }
   }
 }

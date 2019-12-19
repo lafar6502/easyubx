@@ -1,5 +1,5 @@
 /*
- * sorce file for the Easy UBX C library for the mon functions 
+ * source file for the Easy UBX C library for the mon functions 
  */
  
 /*
@@ -26,7 +26,10 @@
   SOFTWARE.
 */
 
+#include <string.h>
+
 #include "easyubx_drv.h"
+#include "easyubx_drv_consts.h"
 #include "easyubx_drv_mon.h"
 
 static void handle_receive_mon_batch(struct eubx_handle * pHandle);
@@ -41,6 +44,15 @@ static void handle_receive_mon_rxr(struct eubx_handle * pHandle);
 static void handle_receive_mon_smgr(struct eubx_handle * pHandle);
 static void handle_receive_mon_txbuf(struct eubx_handle * pHandle);
 static void handle_receive_mon_ver(struct eubx_handle * pHandle);
+
+TEasyUBXError eubx_poll_mon_gnss_selection(struct eubx_handle * pHandle)
+{
+  pHandle->send_message.message_class = EUBX_CLASS_MON;
+  pHandle->send_message.message_id = EUBX_ID_MON_GNSS;
+  pHandle->send_message.message_length = 0;
+
+  return eubx_send_message(pHandle);
+}
 
 TEasyUBXError eubx_poll_mon_version(struct eubx_handle * pHandle)
 {
@@ -109,60 +121,83 @@ void eubx_drv_handle_receive_class_mon(struct eubx_handle * pHandle)
 
 void handle_receive_mon_batch(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_mon_gnss(struct eubx_handle * pHandle)
-{
-  
+{ 
+  eubx_send_notification(pHandle, EUBXReceivedMonGNSS);
 }
 
 void handle_receive_mon_hw2(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_mon_hw(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_mon_io(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_mon_msgpp(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_mon_patch(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_mon_rxbuf(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_mon_rxr(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_mon_smgr(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_mon_txbuf(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_mon_ver(struct eubx_handle * pHandle)
 {
+  const char *hw_ver_ptr = (const char *)&pHandle->receive_message.message_buffer[30];
+
+  if (strcmp(hw_ver_ptr, EUBX_CHIPSET_UBLOX9) == 0) {
+    pHandle->receiver_info.chipset_version = EUBXChipsetUblox9;
+  }
+  else if (strcmp(hw_ver_ptr, EUBX_CHIPSET_UBLOX8) == 0) {
+    pHandle->receiver_info.chipset_version = EUBXChipsetUblox8;
+  }
+  else if (strcmp(hw_ver_ptr, EUBX_CHIPSET_UBLOX7) == 0) {
+    pHandle->receiver_info.chipset_version = EUBXChipsetUblox7;
+  }
+  else if (strcmp(hw_ver_ptr, EUBX_CHIPSET_UBLOX6_2) == 0) {
+    pHandle->receiver_info.chipset_version = EUBXChipsetUblox6_2;
+  }
+  else if (strcmp(hw_ver_ptr, EUBX_CHIPSET_UBLOX6_1) == 0) {
+    pHandle->receiver_info.chipset_version = EUBXChipsetUblox6_1;
+  }
+  else if (strcmp(hw_ver_ptr, EUBX_CHIPSET_UBLOX5) == 0) {
+    pHandle->receiver_info.chipset_version = EUBXChipsetUblox5;
+  }
+  else if (strcmp(hw_ver_ptr, EUBX_CHIPSET_ANTARIS4) == 0) {
+    pHandle->receiver_info.chipset_version = EUBXChipsetAntaris4;
+  }
+  else if (strcmp(hw_ver_ptr, EUBX_CHIPSET_ANTARIS) == 0) {
+    pHandle->receiver_info.chipset_version = EUBXChipsetAntaris;
+  }
+  else  {
+    pHandle->receiver_info.chipset_version = EUBXChipsetUnknown;
+  }
+
+  strncpy(pHandle->receiver_info.software_version, (const char *)pHandle->receive_message.message_buffer, EUBX_SW_VERSION_LENGTH);
+  pHandle->receive_message.message_buffer[EUBX_SW_VERSION_LENGTH] = 0;
+  
   eubx_send_notification(pHandle, EUBXReceivedMonVersion);
 }

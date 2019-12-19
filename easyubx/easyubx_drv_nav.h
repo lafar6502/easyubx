@@ -1,5 +1,5 @@
 /*
- * Test Program for the Easy UBX Arduino library
+ * include file for the Easy UBX C library for the nav functions 
  */
  
 /*
@@ -26,33 +26,18 @@
   SOFTWARE.
 */
 
-#include <HardwareSerial.h>
-#include <WiFi.h>
+#ifndef EASYUBX_DRV_NAV_H
+#define EASYUBX_DRV_NAV_H
 
-#include "EasyUBX.h"
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-#define GPS_SERIAL_DEVICE       1
-#define GPS_TX                  12
-#define GPS_RX                  15
+void eubx_drv_handle_receive_class_nav(struct eubx_handle * pHandle);
 
-HardwareSerial gps_serial(GPS_SERIAL_DEVICE);
-EasyUBX easy_ubx(gps_serial);
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
-void setup() {
-  Serial.begin(115200);
-  Serial.println(F("EasyUBX Test program 2019-12-18"));
-
-  gps_serial.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);
-  gps_serial.setTimeout(2);
-  gps_serial.flush();
-
-  easy_ubx.set_debug_stream(&Serial);
-
-  easy_ubx.begin();
-}
-
-void loop() {
-  while (1) {
-    easy_ubx.loop();
-  }
-}
+#endif  /* EASYUBX_DRV_NAV_H */
