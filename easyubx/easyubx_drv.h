@@ -46,7 +46,9 @@ typedef enum {
 	EUBX_ERROR_CHECKSUM = -2,
   EUBX_ERROR_NOT_INITIALIZED = -3,
   EUBX_ERROR_RECEIVE_OVERFLOW = -4,
-  EUBX_ERROR_UNKNOWN_CLASS = -5
+  EUBX_ERROR_UNKNOWN_CLASS = -5,
+  EUBX_ERROR_NAK = -6,
+  EUBX_ERROR_TIMEOUT = -7
 } TEasyUBXError;
 
 typedef enum {
@@ -62,11 +64,10 @@ typedef enum {
 } TEasyUBXReceiveStatus;
 
 typedef enum {
-	EUBXSendIdle,
-	EUBXSending
-} TEasyUBXSendStatus;
-
-typedef enum {
+  EUBXEventNone = 0,
+  EUBXReceivedACK,
+  EUBXReceivedNAK,
+  EUBXReceivedCfgNAV5,
   EUBXReceivedCfgNMEA,
   EUBXReceivedCfgPRT,
   EUBXReceivedMonGNSS,
@@ -113,7 +114,7 @@ struct eubx_handle {
 	TEasyUBXReceiveStatus	      receive_status;
   struct eubx_message         receive_message;
   uint16_t                    receive_position;
-	TEasyUBXSendStatus		      send_status;
+	TEasyUBXEvent     		      last_event;
   struct eubx_message         send_message;
   eubx_receive_buffer         receive_buffer;
   eubx_send_byte              send_byte;
@@ -123,11 +124,13 @@ struct eubx_handle {
   struct eubx_receiver_info   receiver_info;
 };
 
-TEasyUBXError eubx_init(struct eubx_handle * pHandle);
-TEasyUBXError eubx_set_callback_functions(struct eubx_handle * pHandle, eubx_receive_buffer receive_buffer, eubx_send_byte send_byte, eubx_send_buffer send_buffer, eubx_notify_event notify_event, void * usr_ptr);
+TEasyUBXError eubx_init(struct eubx_handle * pHandle, eubx_receive_buffer receive_buffer, eubx_send_byte send_byte, eubx_send_buffer send_buffer, eubx_notify_event notify_event, void * usr_ptr);
 TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte);
-TEasyUBXError eubx_loop(struct eubx_handle * pHandle);
+void eubx_loop(struct eubx_handle * pHandle);
+TEasyUBXError eubx_waitfor_event(struct eubx_handle * pHandle, TEasyUBXEvent event);
+TEasyUBXError eubx_waitfor_ack(struct eubx_handle * pHandle, uint8_t message_class, uint8_t message_id);
 
+TEasyUBXError eubx_poll_cfg_nav5(struct eubx_handle * pHandle);
 TEasyUBXError eubx_poll_cfg_port(struct eubx_handle * pHandle);
 
 TEasyUBXError eubx_poll_mon_gnss_selection(struct eubx_handle * pHandle);

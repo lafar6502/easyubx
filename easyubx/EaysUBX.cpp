@@ -41,13 +41,16 @@ EasyUBX::~EasyUBX()
 
 void EasyUBX::begin()
 {
-  if (EUBX_ERROR_OK == eubx_init(&m_eubx_handle)) {
-    eubx_set_callback_functions(&m_eubx_handle, receive_buffer_cb, send_byte_cb, send_buffer_cb, notify_cb, this);
-    m_initialized = true;
+  if (EUBX_ERROR_OK == eubx_init(&m_eubx_handle, receive_buffer_cb, send_byte_cb, send_buffer_cb, notify_cb, this)) {
 
-    eubx_poll_mon_gnss_selection(&m_eubx_handle);
-    eubx_poll_mon_version(&m_eubx_handle);
+    m_debug_stream->print("Hardware=");
+    m_debug_stream->print(m_eubx_handle.receiver_info.chipset_version);
+    m_debug_stream->print(" Software=");
+    m_debug_stream->println(m_eubx_handle.receiver_info.software_version);
+
     eubx_poll_cfg_port(&m_eubx_handle);
+    
+    m_initialized = true;
   }
 }
 
@@ -119,6 +122,16 @@ void EasyUBX::notify(TEasyUBXEvent event)
     m_debug_stream->println(m_eubx_handle.receive_message.message_id, HEX);
 
     switch (event) {
+      case EUBXReceivedCfgNAV5:
+        m_debug_stream->print("Mask=");
+        m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[0], HEX);
+        m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[1], HEX);
+        m_debug_stream->print(" DynMode=");
+        m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[2], HEX);
+        m_debug_stream->print(" FixMode=");
+        m_debug_stream->println(m_eubx_handle.receive_message.message_buffer[3], HEX);
+        break;
+
       case EUBXReceivedCfgPRT:
         m_debug_stream->print("Port=");
         m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[0]);
@@ -127,14 +140,15 @@ void EasyUBX::notify(TEasyUBXEvent event)
         m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[13], HEX);
         m_debug_stream->print(" OutMask=");
         m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[14], HEX);
-        m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[15], HEX);
+        m_debug_stream->println(m_eubx_handle.receive_message.message_buffer[15], HEX);
         break;
 
-      case EUBXReceivedMonVersion:
-        m_debug_stream->print("Hardware=");
-        m_debug_stream->print(m_eubx_handle.receiver_info.chipset_version);
-        m_debug_stream->print(" Software=");
-        m_debug_stream->println(m_eubx_handle.receiver_info.software_version);
+      case EUBXReceivedACK:
+      case EUBXReceivedNAK:
+        m_debug_stream->print("Ack for class=");
+        m_debug_stream->print(m_eubx_handle.receive_message.message_buffer[0], HEX);
+        m_debug_stream->print(" id=");
+        m_debug_stream->println(m_eubx_handle.receive_message.message_buffer[1], HEX);
         break;
     }
   }

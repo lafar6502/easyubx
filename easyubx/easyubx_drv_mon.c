@@ -56,11 +56,19 @@ TEasyUBXError eubx_poll_mon_gnss_selection(struct eubx_handle * pHandle)
 
 TEasyUBXError eubx_poll_mon_version(struct eubx_handle * pHandle)
 {
+  TEasyUBXError rc = EUBX_ERROR_OK;
+  
   pHandle->send_message.message_class = EUBX_CLASS_MON;
   pHandle->send_message.message_id = EUBX_ID_MON_VER;
   pHandle->send_message.message_length = 0;
 
-  return eubx_send_message(pHandle);
+  rc = eubx_send_message(pHandle);
+
+  if (EUBX_ERROR_OK == rc) {
+    eubx_waitfor_event(pHandle, EUBXReceivedMonVersion);
+  }
+
+  return rc;
 }
 
 void eubx_drv_handle_receive_class_mon(struct eubx_handle * pHandle)

@@ -48,7 +48,7 @@ static void handle_receive_class_hnr(struct eubx_handle * pHandle);
 
 static void calculate_checksum(const struct eubx_message * message, uint8_t * ck_a, uint8_t * ck_b);
 
-TEasyUBXError eubx_init(struct eubx_handle * pHandle)
+TEasyUBXError eubx_init(struct eubx_handle * pHandle, eubx_receive_buffer receive_buffer, eubx_send_byte send_byte, eubx_send_buffer send_buffer, eubx_notify_event notify_event, void * usr_ptr)
 {
 	TEasyUBXError rc = EUBX_ERROR_NULLPTR;
 	
@@ -64,44 +64,32 @@ TEasyUBXError eubx_init(struct eubx_handle * pHandle)
     pHandle->receive_message.ck_b = 0;
     pHandle->receive_position = 0;
     
-		pHandle->send_status = EUBXSendIdle;
+		pHandle->last_event = EUBXEventNone;
     pHandle->send_message.message_class = 0;
     pHandle->send_message.message_id = 0;
     pHandle->send_message.message_length = 0;
     pHandle->send_message.ck_a = 0;
     pHandle->send_message.ck_b = 0;
 
-    pHandle->receive_buffer = NULL;
-    pHandle->send_byte = NULL;
-    pHandle->send_buffer = NULL;
-    pHandle->notify_event = NULL;
-    pHandle->callback_usr_ptr = NULL;
+    pHandle->receive_buffer = receive_buffer;
+    pHandle->send_byte = send_byte;
+    pHandle->send_buffer = send_buffer;
+    pHandle->notify_event = notify_event;
+    pHandle->callback_usr_ptr = usr_ptr;
 
     pHandle->receiver_info.chipset_version = EUBXChipsetNotSet;
     pHandle->receiver_info.software_version[0] = 0;
-		
+
+    eubx_poll_mon_version(pHandle);
+    eubx_poll_cfg_nav5(pHandle);
+    
 		rc = pHandle->last_error;
 	}
 	
 	return rc;
 }
 
-TEasyUBXError eubx_set_callback_functions(struct eubx_handle * pHandle, eubx_receive_buffer receive_buffer, eubx_send_byte send_byte, eubx_send_buffer send_buffer, eubx_notify_event notify_event, void * usr_ptr)
-{
-  TEasyUBXError rc = EUBX_ERROR_NULLPTR;
-
-  if ((NULL != pHandle) && (NULL != send_byte) && (NULL != notify_event)) {
-    pHandle->receive_buffer = receive_buffer;
-    pHandle->send_byte = send_byte;
-    pHandle->send_buffer = send_buffer;
-    pHandle->notify_event = notify_event;
-    pHandle->callback_usr_ptr = usr_ptr;
-  }
-
-  return rc;
-}
-
-TEasyUBXError eubx_loop(struct eubx_handle * pHandle)
+void eubx_loop(struct eubx_handle * pHandle)
 {
   if (pHandle->receive_buffer != NULL) {
     uint8_t buffer[16];
@@ -111,8 +99,6 @@ TEasyUBXError eubx_loop(struct eubx_handle * pHandle)
       eubx_receive_byte(pHandle, buffer[i]);
     }
   }
-
-  return pHandle->last_error;
 }
 
 TEasyUBXError eubx_receive_byte(struct eubx_handle * pHandle, uint8_t byte)
@@ -215,6 +201,8 @@ TEasyUBXError eubx_send_message(struct eubx_handle * pHandle)
   TEasyUBXError rc = EUBX_ERROR_NULLPTR;
 
   if ((NULL != pHandle) && (NULL != pHandle->send_byte)) {
+    pHandle->last_event = EUBXEventNone;
+
     calculate_checksum(&pHandle->send_message, &pHandle->send_message.ck_a, &pHandle->send_message.ck_b);
 
     pHandle->send_byte(pHandle->callback_usr_ptr, EUBX_SYNC1);
@@ -233,6 +221,32 @@ TEasyUBXError eubx_send_message(struct eubx_handle * pHandle)
     }
     pHandle->send_byte(pHandle->callback_usr_ptr, pHandle->send_message.ck_a);
     pHandle->send_byte(pHandle->callback_usr_ptr, pHandle->send_message.ck_b);
+
+    rc = EUBX_ERROR_OK;
+  }
+
+  return rc;
+}
+
+TEasyUBXError eubx_waitfor_event(struct eubx_handle * pHandle, TEasyUBXEvent event)
+{
+  while (event != pHandle->last_event) {
+    eubx_loop(pHandle);
+  }
+
+  return EUBX_ERROR_OK;
+}
+
+TEasyUBXError eubx_waitfor_ack(struct eubx_handle * pHandle, uint8_t message_class, uint8_t message_id)
+{
+  TEasyUBXError rc = EUBX_ERROR_OK;
+  
+  while ((EUBXReceivedACK != pHandle->last_event) && (EUBXReceivedNAK != pHandle->last_event) && (message_class != pHandle->receive_message.message_class) && (message_id != pHandle->receive_message.message_id)) {
+    eubx_loop(pHandle);
+  }
+
+  if (EUBXReceivedNAK == pHandle->last_event) {
+    rc = EUBX_ERROR_NAK;
   }
 
   return rc;
@@ -242,8 +256,12 @@ TEasyUBXError eubx_send_notification(struct eubx_handle * pHandle, TEasyUBXEvent
 {
   TEasyUBXError rc = EUBX_ERROR_NULLPTR;
 
-  if ((NULL != pHandle) && (NULL != pHandle->notify_event)) {
-    pHandle->notify_event(pHandle->callback_usr_ptr, event);
+  if (NULL != pHandle) {
+    pHandle->last_event = event;
+    
+    if (NULL != pHandle->notify_event) {
+      pHandle->notify_event(pHandle->callback_usr_ptr, event);
+    }
   }
 }
 
@@ -324,57 +342,58 @@ void handle_receive_message(struct eubx_handle * pHandle)
 
 void handle_receive_class_rxm(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_class_inf(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_class_ack(struct eubx_handle * pHandle)
 {
-  
+  switch (pHandle->receive_message.message_id) {
+    case EUBX_ID_ACK_ACK:
+      eubx_send_notification(pHandle, EUBXReceivedACK);
+      break;
+
+    case EUBX_ID_ACK_NAK:
+      eubx_send_notification(pHandle, EUBXReceivedNAK);
+      break;
+    
+    default:
+      break;
+  }
 }
 
 void handle_receive_class_upd(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_class_aid(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_class_tim(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_class_esf(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_class_mga(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_class_log(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_class_sec(struct eubx_handle * pHandle)
 {
-  
 }
 
 void handle_receive_class_hnr(struct eubx_handle * pHandle)
 {
-  
 }
 
 void calculate_checksum(const struct eubx_message * message, uint8_t * ck_a, uint8_t * ck_b)

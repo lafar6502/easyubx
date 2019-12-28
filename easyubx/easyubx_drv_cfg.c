@@ -32,8 +32,18 @@
 
 static void handle_receive_cfg_ant(struct eubx_handle * pHandle);
 static void handle_receive_cfg_msg(struct eubx_handle * pHandle);
+static void handle_receive_cfg_nav5(struct eubx_handle * pHandle);
 static void handle_receive_cfg_nmea(struct eubx_handle * pHandle);
 static void handle_receive_cfg_prt(struct eubx_handle * pHandle);
+
+TEasyUBXError eubx_poll_cfg_nav5(struct eubx_handle * pHandle)
+{
+  pHandle->send_message.message_class = EUBX_CLASS_CFG;
+  pHandle->send_message.message_id = EUBX_ID_CFG_NAV5;
+  pHandle->send_message.message_length = 0;
+
+  return eubx_send_message(pHandle);
+}
 
 TEasyUBXError eubx_poll_cfg_port(struct eubx_handle * pHandle)
 {
@@ -55,6 +65,10 @@ void eubx_drv_handle_receive_class_cfg(struct eubx_handle * pHandle)
       handle_receive_cfg_msg(pHandle);
       break;
 
+    case EUBX_ID_CFG_NAV5:
+      handle_receive_cfg_nav5(pHandle);
+      break;
+
     case EUBX_ID_CFG_NMEA:
       handle_receive_cfg_nmea(pHandle);
       break;
@@ -73,8 +87,12 @@ void handle_receive_cfg_ant(struct eubx_handle * pHandle)
 }
 
 void handle_receive_cfg_msg(struct eubx_handle * pHandle)
+{  
+}
+
+void handle_receive_cfg_nav5(struct eubx_handle * pHandle)
 {
-  
+  eubx_send_notification(pHandle, EUBXReceivedCfgNAV5);
 }
 
 void handle_receive_cfg_nmea(struct eubx_handle * pHandle)
