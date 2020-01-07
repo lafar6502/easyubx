@@ -1,7 +1,7 @@
 /*
  * Test Program for the Easy UBX Arduino library
  */
- 
+
 /*
    MIT License
 
@@ -31,28 +31,50 @@
 
 #include "EasyUBX.h"
 
-#define GPS_SERIAL_DEVICE       1
-#define GPS_TX                  12
-#define GPS_RX                  15
+#define GPS_SERIAL_DEVICE 1
+#define GPS_TX 12
+#define GPS_RX 15
 
 HardwareSerial gps_serial(GPS_SERIAL_DEVICE);
 EasyUBX easy_ubx(gps_serial);
 
-void setup() {
-  Serial.begin(115200);
-  Serial.println(F("EasyUBX Test program 2019-12-23"));
+void setup()
+{
+    Serial.begin(115200);
+    Serial.println(F("EasyUBX Test program 2020-01-06"));
 
-  gps_serial.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);
-  gps_serial.setTimeout(2);
-  gps_serial.flush();
+    gps_serial.begin(9600, SERIAL_8N1, GPS_TX, GPS_RX);
+    gps_serial.setTimeout(2);
+    gps_serial.flush();
 
-  easy_ubx.set_debug_stream(&Serial);
+//    easy_ubx.set_debug_stream(&Serial);
+    if (easy_ubx.begin())
+    {
+        Serial.print(F("Hardware="));
+        Serial.print(easy_ubx.getChiptsetVersion());
+        Serial.print(F(" Software="));
+        Serial.print(easy_ubx.getSoftwareVersion());
+        Serial.print(F(" Dynamic Platform Model="));
+        Serial.print(easy_ubx.getDynamicPlatformModel());
+        Serial.print(F(" Fixing Mode="));
+        Serial.println(easy_ubx.getPositionFixingMode());
 
-  easy_ubx.begin();
+        Serial.print(F("Measurement Rate="));
+        Serial.print(easy_ubx.getMeasurementRate());
+        Serial.print(F(" Navigation Rate="));
+        Serial.println(easy_ubx.getNavigationRate());
+
+   }
+    else
+    {
+        Serial.println(F("Init of EasyUBX failed!"));
+    }
 }
 
-void loop() {
-  while (1) {
-    easy_ubx.loop();
-  }
+void loop()
+{
+    while (1)
+    {
+        easy_ubx.loop();
+    }
 }

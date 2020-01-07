@@ -1,7 +1,7 @@
 /*
  * include file for the Easy UBX C library for the cfg functions 
  */
- 
+
 /*
    MIT License
 
@@ -34,10 +34,10 @@ extern "C"
 {
 #endif
 
-void eubx_drv_handle_receive_class_cfg(struct eubx_handle * pHandle);
+    void eubx_drv_handle_receive_class_cfg(struct eubx_handle *pHandle);
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
 
-#endif  /* EASYUBX_DRV_CFG_H */
+#endif /* EASYUBX_DRV_CFG_H */

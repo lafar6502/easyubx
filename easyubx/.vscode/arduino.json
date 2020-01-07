@@ -1,0 +1,8 @@
+{
+    "board": "esp32:esp32:t-beam",
+    "output": "../build",
+    "configuration": "PSRAM=disabled,FlashFreq=80,UploadSpeed=921600,DebugLevel=none",
+    "programmer": "AVR ISP",
+    "sketch": "easyubx.ino",
+    "port": "COM4"
+}

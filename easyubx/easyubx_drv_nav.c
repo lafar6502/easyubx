@@ -1,7 +1,7 @@
 /*
  * source file for the Easy UBX C library for the mon functions 
  */
- 
+
 /*
    MIT License
 
@@ -30,10 +30,11 @@
 #include "easyubx_drv_consts.h"
 #include "easyubx_drv_nav.h"
 
-void eubx_drv_handle_receive_class_nav(struct eubx_handle * pHandle)
-{  
-  switch (pHandle->receive_message.message_id) {
+void eubx_drv_handle_receive_class_nav(struct eubx_handle *pHandle)
+{
+    switch (pHandle->receive_message.message_id)
+    {
     default:
-      break;
-  }
+        break;
+    }
 }
