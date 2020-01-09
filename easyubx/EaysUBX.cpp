@@ -91,6 +91,11 @@ uint16_t EasyUBX::getNavigationRate() const
     return m_eubx_handle.receiver_config.navigation_rate;
 }
 
+uint16_t EasyUBX::getMeasurementTimeReference() const
+{
+    return m_eubx_handle.receiver_config.rate_time_reference;
+}
+
 TEasyUBXError EasyUBX::setDynamicPlatformModel(TEasyUBXDynamicPlatformModel dyn_model, TEasyUBXFixMode fix_mode)
 {
     return eubx_set_dyn_model(&m_eubx_handle, dyn_model, fix_mode);
