@@ -1,0 +1,2 @@
+/home/rg/easyubx/easyubx/CMakeFiles/rebuild_cache.dir
+/home/rg/easyubx/easyubx/CMakeFiles/edit_cache.dir
