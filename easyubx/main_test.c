@@ -9,7 +9,7 @@
 #include "easyubx_drv.h"
 
 
-
+struct eubx_handle ubx;
 
 uint16_t ser_receive_buffer(void *usr_ptr, uint8_t *buffer, uint16_t max_len) 
 {
@@ -29,7 +29,32 @@ void ser_send_buffer(void* ptr, const uint8_t *buf, uint16_t len) {
 }
 
 void test_notify_event(void* ptr, TEasyUBXEvent event) {
-	printf("Notify event %d\n", event);
+	printf("\n--Notify event %d\n", event);
+	printf("len=%d, error=%d, class=%x, msg_id=%x\n", ubx.receive_message.message_length, ubx.last_error, ubx.receive_message.message_class, ubx.receive_message.message_id);
+
+        switch (event)
+        {
+        case EUBXReceivedCfgNAV5:
+		printf("CfgNAVS mask=%x %x, DynMode=%x, FixMode=%x\n", ubx.receive_message.message_buffer[0], ubx.receive_message.message_buffer[1], ubx.receive_message.message_buffer[2], ubx.receive_message.message_buffer[3]);  
+            
+            break;
+
+        case EUBXReceivedCfgPRT:
+		printf("CfgPRT port=%x, inmask=%x %x, outmaks=%x %x\n", ubx.receive_message.message_buffer[0], ubx.receive_message.message_buffer[12], ubx.receive_message.message_buffer[13], ubx.receive_message.message_buffer[14], ubx.receive_message.message_buffer[15]);
+		break;
+
+        case EUBXReceivedACK:
+		printf("ACK for class=%x, id=%x\n", ubx.receive_message.message_buffer[0], ubx.receive_message.message_buffer[1]);
+		break;
+ 
+        case EUBXReceivedNAK:
+		printf("NACK for class=%x, id=%x\n", ubx.receive_message.message_buffer[0], ubx.receive_message.message_buffer[1]);
+            break;
+	default:
+		printf("unknown\n");
+		break;
+        }
+    
 };
 
 int set_interface_attribs(int fd, int speed)
@@ -98,7 +123,7 @@ int main()
     /*baudrate 115200, 8 bits, no parity, 1 stop bit */
     set_interface_attribs(fd, B9600);
     //set_mincount(fd, 0);                /* set to pure timed read */
-	struct eubx_handle ubx;
+	
 
     TEasyUBXError e0 = eubx_init(&ubx, ser_receive_buffer, ser_send_byte, ser_send_buffer, test_notify_event, (void *) fd);
 	if (e0 != EUBX_ERROR_OK) {
@@ -107,4 +132,8 @@ int main()
 	}
 
 	printf("ubx inited\n");
+	printf("chipset %x, software %s\n", ubx.receiver_info.chipset_version, ubx.receiver_info.software_version);
+
+
+	eubx_loop(&ubx);
 }
