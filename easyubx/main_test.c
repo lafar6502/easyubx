@@ -30,7 +30,7 @@ void ser_send_buffer(void* ptr, const uint8_t *buf, uint16_t len) {
 
 void test_notify_event(void* ptr, TEasyUBXEvent event) {
 	printf("\n--Notify event %d\n", event);
-	printf("len=%d, error=%d, class=%x, msg_id=%x\n", ubx.receive_message.message_length, ubx.last_error, ubx.receive_message.message_class, ubx.receive_message.message_id);
+	printf("len=%d, error=%d, class=%02x, msg_id=%02x\n", ubx.receive_message.message_length, ubx.last_error, ubx.receive_message.message_class, ubx.receive_message.message_id);
 
         switch (event)
         {
@@ -40,18 +40,21 @@ void test_notify_event(void* ptr, TEasyUBXEvent event) {
             break;
 
         case EUBXReceivedCfgPRT:
-		printf("CfgPRT port=%x, inmask=%x %x, outmaks=%x %x\n", ubx.receive_message.message_buffer[0], ubx.receive_message.message_buffer[12], ubx.receive_message.message_buffer[13], ubx.receive_message.message_buffer[14], ubx.receive_message.message_buffer[15]);
+		printf("CfgPRT port=%02x, inmask=%02x %02x, outmaks=%x %x\n", ubx.receive_message.message_buffer[0], ubx.receive_message.message_buffer[12], ubx.receive_message.message_buffer[13], ubx.receive_message.message_buffer[14], ubx.receive_message.message_buffer[15]);
 		break;
 
         case EUBXReceivedACK:
-		printf("ACK for class=%x, id=%x\n", ubx.receive_message.message_buffer[0], ubx.receive_message.message_buffer[1]);
+		printf("ACK for class=%02x, id=%02x\n", ubx.receive_message.message_buffer[0], ubx.receive_message.message_buffer[1]);
 		break;
  
         case EUBXReceivedNAK:
-		printf("NACK for class=%x, id=%x\n", ubx.receive_message.message_buffer[0], ubx.receive_message.message_buffer[1]);
+		printf("NACK for class=%02x, id=%02x\n", ubx.receive_message.message_buffer[0], ubx.receive_message.message_buffer[1]);
             break;
 	default:
-		printf("unknown\n");
+		for (int i=0; i< ubx.receive_message.message_length; i++ ) {
+            printf("%02x ", ubx.receive_message.message_buffer[i]);
+        }
+        printf("\n");
 		break;
         }
     
@@ -108,8 +111,124 @@ void set_mincount(int fd, int mcount)
         printf("Error tcsetattr: %s\n", strerror(errno));
 }
 
+void processfile(const char* fn, void (*process)(const char* ln, int lnum)) {
+    FILE* f = fopen(fn, "r");
+    if (!f) {
+        printf("File does not exist; %s\n", fn);
+        return;
+    }
 
-int main()
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    int lnum = 0;
+    while ((read = getline(&line, &len, f)) != -1) {
+        printf("Retrieved line of length %zu :\n", read);
+        printf("%s", line);
+        lnum++;
+        if (read == 0) continue;
+        if (line[0] == ';') continue;
+        process(line, lnum);
+    }
+    free(line);
+    fclose(f);
+}
+
+unsigned char charToHexDigit(char c)
+{
+  if (c >= 'A')
+    return c - 'A' + 10;
+  else
+    return c - '0';
+}
+
+unsigned char stringToByte(char c[2])
+{
+  return charToHexDigit(c[0]) * 16 + charToHexDigit(c[1]);
+}
+
+int16_t read_next_hexbyte(const char** pp) {
+    const char* p = *pp;
+    while(isspace(*p)) p++;
+    char c = toupper(*p);
+    if (!isdigit(c) && !(c >= 'A' && c <= 'F')) {
+        printf("e1 %c|%s\n", c, p);
+        *pp = p;
+        return -1;
+    }
+    printf("c is %c\n", c);
+    char buf[2];
+    buf[0] = *p;
+    p++;
+    c = toupper(*p);
+    if (!isdigit(c) && !(c >= 'A' && c <= 'F')) {
+        
+        printf("e2 %c|%s\n", c, p);
+        *pp = p;
+        return -1;
+    }
+    buf[1] = *p;
+    *pp = ++p;
+    printf("b is %c %c\n", buf[0], buf[1]);
+    return stringToByte(buf);
+}
+
+void handleubxline(const char* l, int lnum) 
+{
+    const char* p = l + 1;
+    if (l[0] == '>') { //send
+        int16_t cls = read_next_hexbyte(&p);
+        if (cls < 0) {
+            printf("invalid msg class line %d\n", lnum);
+            return;
+        }
+        ubx.send_message.message_class = cls;
+        cls = read_next_hexbyte(&p);
+        if (cls < 0) {
+            printf("invalid id line %d", lnum);
+            return;
+        }
+        ubx.send_message.message_id = cls;
+        int cnt = 0;
+        while((cls = read_next_hexbyte(&p)) >= 0) {
+            ubx.send_message.message_buffer[cnt++] = cls;
+        }
+        ubx.send_message.message_length = cnt;
+        printf("sending command %x %x len %x\n", ubx.send_message.message_class, ubx.send_message.message_id, cnt);
+        TEasyUBXError e0 = eubx_send_message(&ubx);
+        if (e0 != EUBX_ERROR_OK) {
+            printf("Error sending command %d, line %d", e0, lnum);
+            return;
+        }
+        eubx_loop(&ubx);
+    }
+    else if (l[0] == '<') { //expect ack
+        int16_t cls = read_next_hexbyte(&p);
+        if (cls < 0) {
+            printf("invalid msg class line %d\n", lnum);
+            return;
+        }
+        int16_t mid = read_next_hexbyte(&p);
+        if (cls < 0) {
+            printf("invalid id line %d", lnum);
+            return;
+        }
+        printf("awaiting ack %x %x \n", cls, mid);
+        TEasyUBXError e0 = eubx_waitfor_ack(&ubx, cls, mid);
+        if (e0 == EUBX_ERROR_OK) {
+            printf("acked ok");
+            eubx_loop(&ubx);
+        }
+        else {
+            printf("ack error %d\n", e0);
+        }
+    }
+    else {
+        //skip
+    }
+}
+
+int main(int argc, const char** argv)
 {
     char *portname = "/dev/ttyUSB0";
     int fd;
@@ -134,6 +253,17 @@ int main()
 	printf("ubx inited\n");
 	printf("chipset %x, software %s\n", ubx.receiver_info.chipset_version, ubx.receiver_info.software_version);
 
+    if (argc > 1) {
+        for(int i=1; i<argc; i++) {
+            printf("Arg %d: %s\n", i, argv[i]);
+            processfile(argv[i], handleubxline);
+        }
+    }
 
-	eubx_loop(&ubx);
+	while(1) {
+		eubx_loop(&ubx);
+		sleep(10);	
+		
+	}
+	
 }
